@@ -1,8 +1,12 @@
 # QuestMap API — quick reference & curl examples
 
-Base URL (dev): `http://localhost:8090/api` (from the VPS itself; from elsewhere
-use `http://<vps-ip>:8090/api`). All authenticated requests need
-`Authorization: Bearer <token>` and `Accept: application/json`.
+Base URL: **`https://questmap.nekoserver.es/api`** (public, HTTPS — use this from
+mobile / anywhere). Locally on the VPS you can also use `http://localhost:8090/api`.
+All authenticated requests need `Authorization: Bearer <token>` and
+`Accept: application/json`.
+
+> The curl examples below use `localhost:8090`; swap in
+> `https://questmap.nekoserver.es` to hit the public endpoint.
 
 Seeded test users (password `password`): `alba@questmap.test` (4200 xp),
 `brais@…`, `carmela@…`, `diego@…`, `uxia@…` (0 xp).
