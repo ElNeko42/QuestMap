@@ -1,0 +1,86 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: questmap_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      postgis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - questmap
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: questmap_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=1 --tries=3 --timeout=90
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      postgis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - questmap
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: questmap_nginx
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - questmap
+
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: questmap_postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: questmap
+      POSTGRES_USER: questmap
+      POSTGRES_PASSWORD: questmap
+    ports:
+      - "5434:5432"
+    volumes:
+      - questmap_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U questmap -d questmap"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - questmap
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: questmap_mailpit
+    restart: unless-stopped
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+    networks:
+      - questmap
+
+volumes:
+  questmap_pgdata:
+
+networks:
+  questmap:
+    driver: bridge
