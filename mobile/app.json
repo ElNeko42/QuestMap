@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "QuestMap",
+    "slug": "questmap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "questmap",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "es.nekoserver.questmap",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "QuestMap usa tu ubicación para mostrarte misiones cercanas y validar los check-in.",
+        "NSCameraUsageDescription": "QuestMap usa la cámara para que hagas fotos de las misiones.",
+        "NSPhotoLibraryUsageDescription": "QuestMap accede a tus fotos para enviarlas como prueba de misión."
+      }
+    },
+    "android": {
+      "package": "es.nekoserver.questmap",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b1120",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_YOUR_GOOGLE_MAPS_ANDROID_API_KEY"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "QuestMap usa tu ubicación para mostrarte misiones cercanas y validar los check-in."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "QuestMap usa la cámara para que hagas fotos de las misiones."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "https://questmap.nekoserver.es/api"
+    }
+  }
+}
