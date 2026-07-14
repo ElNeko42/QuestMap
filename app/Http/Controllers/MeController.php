@@ -6,6 +6,9 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\AntiCheatException;
 use App\Http\Requests\LocationRequest;
+use App\Http\Requests\SetTargetRequest;
+use App\Http\Requests\UpdatePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\CompletionResource;
 use App\Http\Resources\UserResource;
 use App\Models\Tenant;
@@ -21,7 +24,48 @@ class MeController extends Controller
 
     public function show(Request $request): UserResource
     {
-        return new UserResource($request->user());
+        return new UserResource($request->user()->load('targetQuest'));
+    }
+
+    public function updateProfile(UpdateProfileRequest $request): UserResource
+    {
+        $user = $request->user();
+        $user->fill($request->validated());
+        $user->save();
+
+        return new UserResource($user->fresh()->load('targetQuest'));
+    }
+
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->password = $request->validated('password');
+        $user->save();
+
+        // Invalidate other sessions/tokens; keep the current one alive.
+        $current = $user->currentAccessToken();
+        $user->tokens()->where('id', '!=', $current->id ?? 0)->delete();
+
+        return response()->json(['message' => 'Contraseña actualizada.']);
+    }
+
+    /**
+     * Flag a quest as "my next destination".
+     */
+    public function setTarget(SetTargetRequest $request): UserResource
+    {
+        $user = $request->user();
+        $user->forceFill(['target_quest_id' => (int) $request->validated('quest_id')])->save();
+
+        return new UserResource($user->fresh()->load('targetQuest'));
+    }
+
+    public function clearTarget(Request $request): UserResource
+    {
+        $user = $request->user();
+        $user->forceFill(['target_quest_id' => null])->save();
+
+        return new UserResource($user->fresh());
     }
 
     /**

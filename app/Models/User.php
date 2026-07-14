@@ -33,6 +33,7 @@ class User extends Authenticatable
         'level',
         'last_location',
         'last_location_at',
+        'target_quest_id',
     ];
 
     /**
@@ -68,6 +69,16 @@ class User extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * The quest the user flagged as their next destination.
+     *
+     * @return BelongsTo<Quest, $this>
+     */
+    public function targetQuest(): BelongsTo
+    {
+        return $this->belongsTo(Quest::class, 'target_quest_id');
     }
 
     /**

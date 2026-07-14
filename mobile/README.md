@@ -50,9 +50,15 @@ Con el botón **📍** usas tu **ubicación real** (GPS) — el flujo de producc
 - **Login / Registro** — auth con token (Sanctum), guardado en AsyncStorage.
 - **Mapa** — `react-native-maps` con los pines de misiones; check-in y foto
   (cámara con `expo-image-picker`); geolocalización con `expo-location`.
+  - **Navegación a tu próximo punto**: en el detalle de una misión pulsa
+    "🎯 Ir aquí (fijar destino)". Aparece una línea al destino en el mapa y un
+    **banner con brújula** que muestra distancia + una **flecha que apunta hacia
+    dónde ir** (usa el sensor de rumbo del móvil, como Google Maps).
 - **🏆 Clasificación** — ranking por semana / mes / global.
-- **👤 Perfil** — nivel, barra de progreso de XP, historial de "mis misiones",
-  cerrar sesión.
+- **👤 Perfil** — nivel, barra de progreso de XP, historial de "mis misiones".
+  - **✏️ Editar perfil** — cambiar nombre, email y **contraseña**.
+  - **👥 Amigos** — añadir por email, aceptar solicitudes y **ranking de amigos**
+    (compara tus puntos con los suyos, tú incluido).
 
 ## Estructura
 

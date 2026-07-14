@@ -12,6 +12,21 @@ export interface User {
   level: number;
   last_location: GeoPoint | null;
   last_location_at: string | null;
+  target_quest_id: number | null;
+  target_quest?: Quest | null;
+  created_at: string | null;
+}
+
+export interface Friend {
+  id: number;
+  name: string;
+  xp: number;
+  level: number;
+}
+
+export interface FriendRequestItem {
+  id: number;
+  from: Friend;
   created_at: string | null;
 }
 

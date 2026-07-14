@@ -78,6 +78,15 @@ export default function ProfileScreen({ navigation }: Props) {
         </Text>
       </View>
 
+      <View style={styles.navRow}>
+        <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('EditProfile')}>
+          <Text style={styles.navBtnTxt}>✏️  Editar perfil</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navBtn} onPress={() => navigation.navigate('Friends')}>
+          <Text style={styles.navBtnTxt}>👥  Amigos</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.section}>Mis misiones</Text>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 24 }} color={colors.brand} />
@@ -161,6 +170,17 @@ const styles = StyleSheet.create({
   },
   barFill: { height: '100%', backgroundColor: colors.brand },
   nextTxt: { color: colors.muted, fontSize: 12, marginTop: 6 },
+  navRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 20 },
+  navBtn: {
+    flex: 1,
+    backgroundColor: colors.panel,
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  navBtnTxt: { color: colors.ink, fontWeight: '700', fontSize: 14 },
   section: {
     color: colors.ink,
     fontSize: 16,

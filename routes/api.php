@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FriendController;
 use App\Http\Controllers\Internal\PhotoController;
 use App\Http\Controllers\Internal\QuestBatchController;
 use App\Http\Controllers\Internal\ValidationCallbackController;
@@ -29,8 +30,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
     Route::get('/me', [MeController::class, 'show']);
+    Route::patch('/me', [MeController::class, 'updateProfile']);
+    Route::put('/me/password', [MeController::class, 'updatePassword']);
     Route::post('/me/location', [MeController::class, 'updateLocation']);
     Route::get('/me/completions', [MeController::class, 'completions']);
+    Route::post('/me/target', [MeController::class, 'setTarget']);
+    Route::delete('/me/target', [MeController::class, 'clearTarget']);
+
+    // Friends
+    Route::get('/friends', [FriendController::class, 'index']);
+    Route::get('/friends/requests', [FriendController::class, 'requests']);
+    Route::post('/friends/request', [FriendController::class, 'store']);
+    Route::post('/friends/{user}/accept', [FriendController::class, 'accept']);
+    Route::delete('/friends/{user}', [FriendController::class, 'destroy']);
 
     Route::get('/quests/nearby', [QuestController::class, 'nearby']);
     Route::get('/quests/{quest}', [QuestController::class, 'show']);

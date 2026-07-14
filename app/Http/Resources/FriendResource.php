@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Public view of another user for friend lists / comparisons.
+ *
  * @mixin User
  */
-class UserResource extends JsonResource
+class FriendResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -21,15 +23,8 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'email' => $this->email,
-            'tenant_id' => $this->tenant_id,
             'xp' => (int) $this->xp,
             'level' => (int) $this->level,
-            'last_location' => $this->last_location?->toArray(),
-            'last_location_at' => $this->last_location_at?->toIso8601String(),
-            'target_quest_id' => $this->target_quest_id,
-            'target_quest' => new QuestResource($this->whenLoaded('targetQuest')),
-            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

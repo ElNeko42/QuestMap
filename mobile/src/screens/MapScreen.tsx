@@ -10,15 +10,20 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { Marker, type MapPressEvent, type Region } from 'react-native-maps';
+import MapView, {
+  Marker,
+  Polyline,
+  type MapPressEvent,
+  type Region,
+} from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ApiError } from '../api/client';
-import { questApi, authApi } from '../api/client';
+import { ApiError, authApi, questApi } from '../api/client';
 import type { GeoPoint, Quest } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../navigation/types';
 import { categoryEmoji, colors, CORUNA, radius, validationLabel } from '../theme';
+import { bearingDeg, compassLabel, distanceMeters, formatDistance } from '../utils/geo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Map'>;
 
@@ -40,6 +45,9 @@ export default function MapScreen({ navigation }: Props) {
   const [selected, setSelected] = useState<Quest | null>(null);
   const [done, setDone] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [heading, setHeading] = useState(0);
+
+  const target = user?.target_quest ?? null;
 
   const loadNearby = useCallback(
     async (pos: GeoPoint) => {
@@ -61,14 +69,25 @@ export default function MapScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Device compass heading (magnetometer) — used to point the arrow.
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    (async () => {
+      try {
+        sub = await Location.watchHeadingAsync((h) => {
+          const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+          setHeading(deg);
+        });
+      } catch {
+        /* compass not available */
+      }
+    })();
+    return () => sub?.remove();
+  }, []);
+
   const recenter = (pos: GeoPoint) => {
     mapRef.current?.animateToRegion(
-      {
-        latitude: pos.lat,
-        longitude: pos.lng,
-        latitudeDelta: 0.03,
-        longitudeDelta: 0.03,
-      },
+      { latitude: pos.lat, longitude: pos.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
       450
     );
   };
@@ -91,7 +110,7 @@ export default function MapScreen({ navigation }: Props) {
       try {
         await authApi.updateLocation(pos);
       } catch {
-        /* location update is best-effort */
+        /* best-effort */
       }
       await refresh();
       await loadNearby(pos);
@@ -120,8 +139,6 @@ export default function MapScreen({ navigation }: Props) {
     loadNearby(pos);
   };
 
-  // In demo mode we submit the quest's own coordinates (simulating "I walked
-  // there") so the server-side geofence passes; otherwise the real GPS fix.
   const submitCoords = (q: Quest): GeoPoint =>
     demoMode && q.location ? q.location : myPos;
 
@@ -146,10 +163,7 @@ export default function MapScreen({ navigation }: Props) {
       toast.show('Sin permiso de cámara.', 'err');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.6,
-      mediaTypes: ['images'],
-    });
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.6, mediaTypes: ['images'] });
     if (result.canceled || !result.assets?.length) return;
 
     const asset = result.assets[0];
@@ -167,6 +181,35 @@ export default function MapScreen({ navigation }: Props) {
     }
   };
 
+  const setTarget = async (q: Quest) => {
+    try {
+      await authApi.setTarget(q.id);
+      await refresh();
+      toast.show(`🎯 Destino: ${q.title}`, 'ok');
+      setSelected(null);
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : 'Error', 'err');
+    }
+  };
+
+  const clearTarget = async () => {
+    try {
+      await authApi.clearTarget();
+      await refresh();
+      toast.show('Destino quitado');
+      setSelected(null);
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : 'Error', 'err');
+    }
+  };
+
+  // Navigation figures for the target banner + arrow.
+  const targetDistance =
+    target?.location ? distanceMeters(myPos, target.location) : null;
+  const targetBearing =
+    target?.location ? bearingDeg(myPos, target.location) : 0;
+  const arrowRotation = targetBearing - heading; // relative to where the phone points
+
   return (
     <View style={styles.flex}>
       <MapView
@@ -176,11 +219,23 @@ export default function MapScreen({ navigation }: Props) {
         onPress={onMapPress}
         showsUserLocation={!demoMode}
       >
-        {/* Simulated position marker in demo mode */}
         {demoMode && (
           <Marker coordinate={{ latitude: myPos.lat, longitude: myPos.lng }}>
             <View style={styles.meDot} />
           </Marker>
+        )}
+
+        {/* Route line to the target quest */}
+        {target?.location && (
+          <Polyline
+            coordinates={[
+              { latitude: myPos.lat, longitude: myPos.lng },
+              { latitude: target.location.lat, longitude: target.location.lng },
+            ]}
+            strokeColor={colors.gold}
+            strokeWidth={4}
+            lineDashPattern={[8, 8]}
+          />
         )}
 
         {quests.map((q) =>
@@ -190,8 +245,16 @@ export default function MapScreen({ navigation }: Props) {
               coordinate={{ latitude: q.location.lat, longitude: q.location.lng }}
               onPress={() => setSelected(q)}
             >
-              <View style={[styles.pin, done.has(q.id) && styles.pinDone]}>
-                <Text style={styles.pinTxt}>{done.has(q.id) ? '✓' : '★'}</Text>
+              <View
+                style={[
+                  styles.pin,
+                  done.has(q.id) && styles.pinDone,
+                  target?.id === q.id && styles.pinTarget,
+                ]}
+              >
+                <Text style={styles.pinTxt}>
+                  {target?.id === q.id ? '🎯' : done.has(q.id) ? '✓' : '★'}
+                </Text>
               </View>
             </Marker>
           ) : null
@@ -207,23 +270,41 @@ export default function MapScreen({ navigation }: Props) {
           <View style={styles.spacer} />
           <View style={styles.pill}>
             <Text style={styles.pillTxt}>
-              Nv <Text style={{ color: colors.gold }}>{user?.level ?? 1}</Text> ·{' '}
-              {user?.xp ?? 0} XP
+              Nv <Text style={{ color: colors.gold }}>{user?.level ?? 1}</Text> · {user?.xp ?? 0} XP
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Leaderboard')}
-          >
-            <Text style={styles.iconTxt}>🏆</Text>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Friends')}>
+            <Text style={styles.iconTxt}>👥</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Profile')}
-          >
+          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Profile')}>
             <Text style={styles.iconTxt}>👤</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Navigation banner to the target */}
+        {target?.location && targetDistance != null && (
+          <TouchableOpacity
+            style={styles.navBanner}
+            activeOpacity={0.9}
+            onPress={() => recenter(myPos)}
+          >
+            <Text style={[styles.navArrow, { transform: [{ rotate: `${arrowRotation}deg` }] }]}>
+              ➤
+            </Text>
+            <View style={styles.flex}>
+              <Text style={styles.navTitle} numberOfLines={1}>
+                🎯 {target.title}
+              </Text>
+              <Text style={styles.navSub}>
+                {formatDistance(targetDistance)} · hacia el {compassLabel(targetBearing)}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={clearTarget} hitSlop={10}>
+              <Text style={styles.navClose}>✕</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
+
         {demoMode && (
           <View style={styles.demoBanner}>
             <Text style={styles.demoTxt}>🧭 Modo demo: toca el mapa para moverte</Text>
@@ -249,11 +330,7 @@ export default function MapScreen({ navigation }: Props) {
         animationType="slide"
         onRequestClose={() => setSelected(null)}
       >
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={() => setSelected(null)}
-        />
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setSelected(null)} />
         {selected && (
           <View style={styles.sheet}>
             <View style={styles.grabber} />
@@ -313,21 +390,22 @@ export default function MapScreen({ navigation }: Props) {
                   {busy ? (
                     <ActivityIndicator color="#3a2b00" />
                   ) : (
-                    <Text style={[styles.actTxt, { color: '#3a2b00' }]}>
-                      📷 Hacer foto
-                    </Text>
+                    <Text style={[styles.actTxt, { color: '#3a2b00' }]}>📷 Hacer foto</Text>
                   )}
                 </TouchableOpacity>
-                <Text style={styles.hint}>
-                  Una IA validará tu foto y te dará los XP.
-                </Text>
+                <Text style={styles.hint}>Una IA validará tu foto y te dará los XP.</Text>
               </>
             )}
 
-            {selected.validation_type === 'data_input' && (
-              <Text style={styles.hint}>
-                Este tipo de misión llegará en una próxima versión.
-              </Text>
+            {/* Set / clear as next destination */}
+            {target?.id === selected.id ? (
+              <TouchableOpacity style={styles.destBtn} onPress={clearTarget}>
+                <Text style={styles.destTxt}>✕ Quitar destino</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.destBtn} onPress={() => setTarget(selected)}>
+                <Text style={styles.destTxt}>🎯 Ir aquí (fijar destino)</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -370,9 +448,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconTxt: { fontSize: 18 },
+
+  navBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 14,
+    marginTop: 4,
+    backgroundColor: colors.panel,
+    borderColor: colors.gold,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  navArrow: { color: colors.gold, fontSize: 24, width: 28, textAlign: 'center' },
+  navTitle: { color: colors.ink, fontWeight: '800', fontSize: 15 },
+  navSub: { color: colors.muted, fontSize: 12, marginTop: 1 },
+  navClose: { color: colors.muted, fontSize: 18, paddingHorizontal: 4 },
+
   demoBanner: {
     alignSelf: 'center',
-    marginTop: 4,
+    marginTop: 6,
     backgroundColor: 'rgba(245,179,1,0.14)',
     borderColor: 'rgba(245,179,1,0.4)',
     borderWidth: 1,
@@ -420,6 +517,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pinDone: { backgroundColor: colors.gold },
+  pinTarget: { backgroundColor: colors.panel, borderColor: colors.gold },
   pinTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
   meDot: {
     width: 18,
@@ -474,4 +572,13 @@ const styles = StyleSheet.create({
   actTxt: { color: colors.brandInk, fontWeight: '800', fontSize: 16 },
   btnDisabled: { opacity: 0.6 },
   hint: { color: colors.muted, fontSize: 13, textAlign: 'center', marginTop: 10 },
+  destBtn: {
+    marginTop: 12,
+    paddingVertical: 13,
+    borderRadius: radius.md,
+    borderColor: colors.gold,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  destTxt: { color: colors.gold, fontWeight: '700', fontSize: 15 },
 });

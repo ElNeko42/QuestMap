@@ -8,6 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { ToastProvider } from './src/components/Toast';
 import type { RootStackParamList } from './src/navigation/types';
+import EditProfileScreen from './src/screens/EditProfileScreen';
+import FriendsScreen from './src/screens/FriendsScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import MapScreen from './src/screens/MapScreen';
@@ -49,6 +51,16 @@ function MainNavigator() {
           name="Profile"
           component={ProfileScreen}
           options={{ title: 'Mi perfil', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ title: 'Editar perfil' }}
+        />
+        <Stack.Screen
+          name="Friends"
+          component={FriendsScreen}
+          options={{ title: '👥 Amigos' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

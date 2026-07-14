@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import type {
   Completion,
+  Friend,
+  FriendRequestItem,
   GeoPoint,
   LeaderboardRow,
   Quest,
@@ -111,6 +113,48 @@ export const authApi = {
       method: 'POST',
       body: p,
     }),
+  updateProfile: (fields: { name?: string; email?: string }) =>
+    request<{ data: User }>('/me', { method: 'PATCH', body: fields }).then(
+      (r) => r.data
+    ),
+  updatePassword: (current: string, next: string) =>
+    request<{ message: string }>('/me/password', {
+      method: 'PUT',
+      body: {
+        current_password: current,
+        password: next,
+        password_confirmation: next,
+      },
+    }),
+  setTarget: (questId: number) =>
+    request<{ data: User }>('/me/target', {
+      method: 'POST',
+      body: { quest_id: questId },
+    }).then((r) => r.data),
+  clearTarget: () =>
+    request<{ data: User }>('/me/target', { method: 'DELETE' }).then(
+      (r) => r.data
+    ),
+};
+
+// ---- Friends ----
+export const friendApi = {
+  list: () => request<{ data: Friend[] }>('/friends').then((r) => r.data),
+  requests: () =>
+    request<{ data: FriendRequestItem[] }>('/friends/requests').then(
+      (r) => r.data
+    ),
+  add: (email: string) =>
+    request<{ message: string; status: string }>('/friends/request', {
+      method: 'POST',
+      body: { email },
+    }),
+  accept: (userId: number) =>
+    request<{ message: string }>(`/friends/${userId}/accept`, {
+      method: 'POST',
+    }),
+  remove: (userId: number) =>
+    request<{ message: string }>(`/friends/${userId}`, { method: 'DELETE' }),
 };
 
 // ---- Quests ----
